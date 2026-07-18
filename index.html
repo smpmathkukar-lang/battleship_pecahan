@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Battleship Pecahan Mahakam</title>
+<style>
+  :root{
+    --river-deep:#0B2E33;
+    --river-mid:#12464A;
+    --river-teal:#1B7A74;
+    --sand:#D9B26F;
+    --foam:#F4F1E8;
+    --sunset:#E8813A;
+    --sunset-dim:#B85F26;
+    --miss:#7A4A55;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    min-height:100vh;
+    background:
+      radial-gradient(ellipse at 20% -10%, rgba(27,122,116,0.35), transparent 55%),
+      radial-gradient(ellipse at 90% 110%, rgba(232,129,58,0.12), transparent 50%),
+      var(--river-deep);
+    color:var(--foam);
+    font-family:-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    display:flex;
+    justify-content:center;
+    padding:14px 12px 20px;
+  }
+  #app{width:100%;max-width:640px;}
+
+  .eyebrow{
+    font-family:ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    font-size:11px;
+    color:var(--sand);
+    opacity:.85;
+    margin-bottom:2px;
+  }
+  h1{
+    font-family:'Arial Black', 'Arial Narrow Bold', Arial, sans-serif;
+    font-weight:800;
+    font-size:clamp(26px,6.5vw,38px);
+    letter-spacing:.01em;
+    margin:0 0 4px;
+    line-height:1.02;
+    color:var(--foam);
+    text-shadow:0 2px 0 rgba(0,0,0,0.25);
+  }
+  .subtitle{font-size:13.5px;color:#BFDAD6;max-width:52ch;line-height:1.5;margin:0 0 10px;}
+
+  #hud{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+  .stat{
+    flex:1;min-width:78px;
+    background:rgba(244,241,232,0.06);
+    border:1px solid rgba(244,241,232,0.14);
+    border-radius:10px;
+    padding:8px 10px;
+  }
+  .stat .k{font-family:ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--sand);opacity:.8;}
+  .stat .v{font-family:ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;font-size:19px;font-weight:600;color:var(--foam);}
+
+  #target-panel{
+    background:linear-gradient(160deg, rgba(27,122,116,0.35), rgba(11,46,51,0.2));
+    border:1px solid rgba(217,178,111,0.35);
+    border-radius:14px;
+    padding:12px 16px;
+    margin-bottom:12px;
+    text-align:center;
+    position:relative;
+    overflow:hidden;
+  }
+  #target-panel::before{
+    content:"";position:absolute;inset:0;
+    background:repeating-linear-gradient(90deg, transparent 0 18px, rgba(244,241,232,0.03) 18px 19px);
+    pointer-events:none;
+  }
+  .target-label{font-family:ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--sand);margin-bottom:6px;transition:opacity .25s ease;}
+  .target-value{
+    font-family:'Arial Black', 'Arial Narrow Bold', Arial, sans-serif;
+    font-size:clamp(38px,11vw,58px);
+    font-weight:800;
+    color:var(--foam);
+    line-height:1;
+    display:flex;justify-content:center;align-items:center;gap:4px;
+    transition:opacity .25s ease;
+  }
+  .frac{display:inline-flex;flex-direction:column;align-items:center;font-size:0.55em;line-height:1;vertical-align:middle;margin:0 2px;}
+  .frac .num{border-bottom:3px solid var(--foam);padding:0 6px 3px;}
+  .frac .den{padding:3px 6px 0;}
+
+  #line-section{margin-bottom:8px;}
+  #instruction-line{font-size:12.5px;color:#BFDAD6;text-align:center;margin-bottom:6px;}
+  #track-wrap{position:relative;padding:46px 6px 46px;touch-action:none;}
+  #river-bg{
+    position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);
+    height:34px;border-radius:20px;
+    background:linear-gradient(180deg, rgba(27,122,116,0.55), rgba(11,46,51,0.55));
+    border:1px solid rgba(217,178,111,0.25);
+  }
+  #track{
+    position:relative;height:6px;border-radius:3px;
+    background:var(--sand);
+    margin:0 2px;
+    cursor:pointer;
+  }
+  #track.locked{cursor:default;}
+  .tick{position:absolute;top:-3px;width:2px;height:12px;background:rgba(11,46,51,0.9);border-radius:1px;}
+  .tick-label{
+    position:absolute;top:14px;transform:translateX(-50%);
+    font-family:ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;font-size:10.5px;color:#BFDAD6;
+    display:flex;flex-direction:column;align-items:center;gap:2px;
+  }
+  .dermaga{width:6px;height:6px;border-radius:1px;background:var(--sand);opacity:.9;}
+
+  .marker{position:absolute;top:50%;transform:translate(-50%,-50%);width:0;height:0;pointer-events:none;}
+  .boat{position:absolute;top:-30px;left:50%;transform:translateX(-50%);font-size:22px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.4));}
+  .boat.sunk{animation:sinkShip .7s ease-in forwards;}
+  @keyframes sinkShip{
+    0%{ transform:translateX(-50%) translateY(0) rotate(0deg); opacity:1; }
+    55%{ transform:translateX(-50%) translateY(8px) rotate(18deg); opacity:.8; }
+    100%{ transform:translateX(-50%) translateY(20px) rotate(40deg); opacity:0; }
+  }
+
+  .aim-mark{
+    position:absolute;top:50%;left:0;transform:translate(-50%,-50%);
+    font-size:20px;pointer-events:none;
+    animation:aimPulse .6s ease-in-out infinite;
+  }
+  @keyframes aimPulse{
+    0%,100%{ transform:translate(-50%,-50%) scale(1); opacity:.85; }
+    50%{ transform:translate(-50%,-50%) scale(1.15); opacity:1; }
+  }
+
+  .rocket-drop{
+    position:absolute;left:50%;top:-46px;transform:translateX(-50%) rotate(90deg);
+    font-size:19px;pointer-events:none;
+    animation:rocketFall .42s cubic-bezier(.5,0,1,.6) forwards;
+    z-index:5;
+  }
+  @keyframes rocketFall{
+    0%{ top:-46px; opacity:1; }
+    85%{ top:2px; opacity:1; }
+    100%{ top:2px; opacity:0; }
+  }
+  .splash{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    font-size:22px;pointer-events:none;
+    animation:splashPop .5s ease-out forwards;
+  }
+  @keyframes splashPop{
+    0%{ transform:translate(-50%,-50%) scale(.3); opacity:0; }
+    60%{ transform:translate(-50%,-50%) scale(1.2); opacity:1; }
+    100%{ transform:translate(-50%,-50%) scale(1); opacity:1; }
+  }
+  .explosion{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    font-size:36px;pointer-events:none;
+    animation:explodeBig .65s cubic-bezier(.3,.1,.3,1) forwards;
+    z-index:8;
+  }
+  @keyframes explodeBig{
+    0%{ transform:translate(-50%,-50%) scale(.15) rotate(0deg); opacity:0; }
+    28%{ transform:translate(-50%,-50%) scale(1.6) rotate(-10deg); opacity:1; }
+    55%{ transform:translate(-50%,-50%) scale(1.2) rotate(8deg); opacity:1; }
+    100%{ transform:translate(-50%,-50%) scale(1) rotate(0deg); opacity:1; }
+  }
+  .shake{ animation:shakeFx .45s ease-in-out; }
+  @keyframes shakeFx{
+    0%,100%{ transform:translateX(0); }
+    15%{ transform:translateX(-7px); }
+    30%{ transform:translateX(6px); }
+    45%{ transform:translateX(-5px); }
+    60%{ transform:translateX(4px); }
+    75%{ transform:translateX(-2px); }
+  }
+
+  #feedback{min-height:36px;text-align:center;font-size:14px;font-weight:600;margin:6px 0 10px;display:flex;flex-direction:column;align-items:center;gap:2px;}
+  #feedback .fb-main{font-family:ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;font-size:15px;}
+  #feedback .fb-sub{font-size:12px;font-weight:400;color:#BFDAD6;}
+
+  button{
+    font-family:-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-weight:600;font-size:14px;
+    border:none;border-radius:10px;
+    padding:12px 18px;
+    cursor:pointer;
+    transition:transform .08s ease, filter .15s ease;
+  }
+  button:active{transform:scale(0.96);}
+  .btn-primary{background:var(--sunset);color:#241207;}
+  .btn-primary:hover{filter:brightness(1.08);}
+  .btn-ghost{background:rgba(244,241,232,0.08);color:var(--foam);border:1px solid rgba(244,241,232,0.25);}
+  .row{display:flex;gap:10px;}
+
+  .modal-back{
+    position:fixed;inset:0;background:rgba(4,16,18,0.82);
+    display:flex;align-items:center;justify-content:center;
+    padding:20px;z-index:10;
+  }
+  .modal{
+    background:linear-gradient(165deg, var(--river-mid), var(--river-deep));
+    border:1px solid rgba(217,178,111,0.35);
+    border-radius:16px;padding:24px 22px;max-width:440px;width:100%;
+  }
+  .modal h2{font-family:'Arial Black', 'Arial Narrow Bold', Arial, sans-serif;font-size:24px;font-weight:800;margin:0 0 10px;}
+  .modal p, .modal li{font-size:13.5px;line-height:1.6;color:#DDEDEA;}
+  .modal ul{padding-left:18px;margin:10px 0 18px;}
+  .hidden{display:none;}
+  .level-pill{
+    display:inline-block;font-family:ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;font-size:10.5px;
+    letter-spacing:.08em;text-transform:uppercase;
+    background:rgba(217,178,111,0.18);border:1px solid rgba(217,178,111,0.4);
+    color:var(--sand);padding:3px 10px;border-radius:999px;margin-bottom:10px;
+  }
+
+  footer{text-align:center;font-size:11px;color:#5E8783;margin-top:12px;}
+
+  .example-link{
+    display:block;text-align:center;background:none;border:none;
+    color:var(--sand);font-size:12.5px;text-decoration:underline;
+    text-underline-offset:2px;margin:0 auto 4px;padding:4px;
+    font-family:inherit;cursor:pointer;
+  }
+
+  #demo-wrap{margin:16px 0 8px;}
+  #demo-caption{
+    min-height:36px;text-align:center;font-size:13px;color:#DDEDEA;
+    margin-bottom:14px;line-height:1.5;
+  }
+  #demo-caption b{color:var(--sunset);}
+  .demo-track{
+    position:relative;height:16px;border-radius:4px;
+    background:rgba(217,178,111,0.25);
+    margin:26px 4px 30px;
+    overflow:visible;
+  }
+  .demo-segment{
+    position:absolute;top:0;bottom:0;
+    background:transparent;
+    border-right:1px solid rgba(11,46,51,0.5);
+    opacity:0;
+    transition:opacity .35s ease, background .45s ease;
+  }
+  .demo-segment:last-child{border-right:none;}
+  .demo-segment.appear{opacity:1;background:rgba(79,209,197,0.55);}
+  .demo-segment.active{background:var(--sunset);}
+  .demo-tick-label{
+    position:absolute;top:20px;transform:translateX(-50%);
+    font-family:ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace;
+    font-size:11px;color:#BFDAD6;
+  }
+  .demo-point{
+    position:absolute;top:50%;transform:translate(-50%,-50%) scale(.4);
+    font-size:22px;opacity:0;
+    transition:opacity .45s ease, transform .45s cubic-bezier(.34,1.4,.4,1);
+    pointer-events:none;
+  }
+  .demo-point.show{opacity:1;transform:translate(-50%,-50%) scale(1);}
+  .demo-point-line{
+    position:absolute;top:50%;bottom:-16px;width:2px;
+    background:var(--foam);transform:translateX(-50%);
+    opacity:0;transition:opacity .3s ease;
+  }
+  .demo-point-line.show{opacity:.8;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="eyebrow">Latihan Estimasi &middot; Kukar</div>
+  <h1>Battleship Pecahan Mahakam</h1>
+  <p class="subtitle">Ingat baik-baik pecahan yang muncul, lalu klik posisinya di garis bilangan 0&ndash;1.</p>
+
+  <div id="hud">
+    <div class="stat"><div class="k">Ronde</div><div class="v" id="hud-round">1/10</div></div>
+    <div class="stat"><div class="k">Skor</div><div class="v" id="hud-score">0</div></div>
+    <div class="stat"><div class="k">Beruntun</div><div class="v" id="hud-streak">0</div></div>
+  </div>
+
+  <div id="target-panel">
+    <div class="target-label" id="phase-label">Perhatikan pecahannya!</div>
+    <div class="target-value" id="target-value">&mdash;</div>
+  </div>
+
+  <div id="line-section">
+    <div id="instruction-line">Lihat pecahannya, lalu klik posisi yang sesuai di garis sungai.</div>
+    <div id="track-wrap">
+      <div id="river-bg"></div>
+      <div id="track">
+        <div id="ticks"></div>
+        <div class="aim-mark" id="aim-mark" style="display:none;">&#127919;</div>
+        <div class="marker" id="ship-marker" style="display:none;"><div class="boat">&#9973;</div></div>
+        <div id="results-layer"></div>
+      </div>
+    </div>
+  </div>
+
+  <button class="example-link" id="example-link-btn">Belum yakin caranya? Lihat contoh &rarr;</button>
+
+  <div id="feedback"><div class="fb-main">&nbsp;</div><div class="fb-sub">&nbsp;</div></div>
+
+  <footer>Dibuat untuk latihan remedial Kelas 7 &middot; Program PRIMA-D</footer>
+</div>
+
+<div class="modal-back" id="intro-modal">
+  <div class="modal">
+    <div class="level-pill">Cara Main</div>
+    <h2>Battleship Pecahan Mahakam</h2>
+    <p>Sebuah pecahan (nilainya antara 0 dan 1) akan muncul di panel atas &mdash; dan tetap terlihat sepanjang ronde.</p>
+    <ul>
+      <li>Tunggu 2 detik pertama untuk melihat baik-baik posisinya, lalu klik titik di garis sungai tempat kamu perkirakan pecahan itu berada.</li>
+      <li>Setengah detik kemudian, roket jatuh ke titik yang kamu klik &mdash; dan kapal muncul di posisi yang <b>sebenarnya</b>.</li>
+      <li>Kena kapal &rarr; ledakan besar! Meleset &rarr; hanya percikan air.</li>
+      <li>5 ronde pertama ada 1 angka bantu (acak) di tengah garis. 5 ronde terakhir hanya ada angka 0 dan 1 &mdash; lebih menantang!</li>
+      <li>10 ronde, makin sering benar makin tinggi skor &amp; beruntunmu.</li>
+    </ul>
+    <button class="btn-primary" id="start-btn" style="width:100%;">Mulai Berlayar</button>
+    <button class="example-link" id="example-link-btn-intro">Lihat contoh cara membaginya dulu &rarr;</button>
+  </div>
+</div>
+
+<div class="modal-back hidden" id="example-modal">
+  <div class="modal">
+    <div class="level-pill">Contoh</div>
+    <h2>Cara Membaca Pecahan di Garis</h2>
+    <div id="demo-caption">&nbsp;</div>
+    <div id="demo-wrap">
+      <div class="demo-track" id="demo-track"></div>
+    </div>
+    <div class="row">
+      <button class="btn-ghost" id="replay-example-btn" style="flex:1;">Ulangi Animasi</button>
+      <button class="btn-primary" id="close-example-btn" style="flex:1;">Mengerti, Lanjut!</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-back hidden" id="summary-modal">
+  <div class="modal">
+    <div class="level-pill" id="rank-pill">Hasil</div>
+    <h2 id="summary-title">Misi Selesai</h2>
+    <p id="summary-body"></p>
+    <div class="row" style="margin-top:10px;">
+      <button class="btn-ghost" id="review-btn" style="flex:1;">Lihat Detail</button>
+      <button class="btn-primary" id="restart-btn" style="flex:1;">Main Lagi</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const FRACTIONS = [
+    [1,2],[1,3],[2,3],[1,4],[3,4],[1,5],[2,5],[3,5],[4,5],
+    [1,6],[5,6],[1,8],[3,8],[5,8],[7,8],[1,10],[3,10],[7,10],[9,10]
+  ];
+  const HELPER_OPTIONS = [0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9];
+  const TICKS_HARD = [0, 1];
+  const ROUNDS_TOTAL = 10;
+  const HIT_TOLERANCE = 0.06;
+  const SHOW_MS = 2000;
+  const RESOLVE_DELAY_MS = 500;
+
+  let state = {
+    round: 0,
+    score: 0,
+    streak: 0,
+    bestStreak: 0,
+    scoresLog: [],
+    current: null,
+    locked: true
+  };
+
+  const el = (id) => document.getElementById(id);
+  const hudRound = el('hud-round'), hudScore = el('hud-score'), hudStreak = el('hud-streak');
+  const phaseLabel = el('phase-label'), targetValueEl = el('target-value');
+  const track = el('track'), ticksWrap = el('ticks'), resultsLayer = el('results-layer');
+  const shipMarker = el('ship-marker'), aimMark = el('aim-mark');
+  const feedback = el('feedback');
+  const introModal = el('intro-modal'), startBtn = el('start-btn');
+  const summaryModal = el('summary-modal'), restartBtn = el('restart-btn'), reviewBtn = el('review-btn');
+  const summaryTitle = el('summary-title'), summaryBody = el('summary-body'), rankPill = el('rank-pill');
+
+  function fracHTML(n, d){
+    return '<span class="frac"><span class="num">'+n+'</span><span class="den">'+d+'</span></span>';
+  }
+
+  function pickFraction(){
+    const [n,d] = FRACTIONS[Math.floor(Math.random()*FRACTIONS.length)];
+    return { num:n, den:d, value:n/d };
+  }
+
+  function valueToPercent(v){ return v*100; }
+  function percentToValue(p){ return p/100; }
+
+  function ticksForRound(roundIdx){
+    if (roundIdx < 5){
+      const helper = HELPER_OPTIONS[Math.floor(Math.random()*HELPER_OPTIONS.length)];
+      return [0, helper, 1];
+    }
+    return TICKS_HARD;
+  }
+
+  function buildTicks(ticks){
+    ticksWrap.innerHTML = '';
+    ticks.forEach((v) => {
+      const p = valueToPercent(v);
+      const tick = document.createElement('div');
+      tick.className = 'tick';
+      tick.style.left = p+'%';
+      ticksWrap.appendChild(tick);
+      const label = document.createElement('div');
+      label.className = 'tick-label';
+      label.style.left = p+'%';
+      const dispVal = Number.isInteger(v) ? v.toString() : v.toFixed(2).replace(/0+$/,'').replace(/\.$/,'');
+      label.innerHTML = '<span class="dermaga"></span><span>'+dispVal+'</span>';
+      ticksWrap.appendChild(label);
+    });
+  }
+
+  function updateHUD(){
+    hudRound.textContent = Math.min(state.round+1, ROUNDS_TOTAL) + '/' + ROUNDS_TOTAL;
+    hudScore.textContent = state.score;
+    hudStreak.textContent = state.streak + (state.streak>=3 ? ' \u{1F525}' : '');
+  }
+
+  function trackRect(){ return track.getBoundingClientRect(); }
+
+  function newRound(){
+    if (state.round >= ROUNDS_TOTAL){
+      showSummary();
+      return;
+    }
+    resultsLayer.innerHTML = '';
+    aimMark.style.display = 'none';
+    shipMarker.style.display = 'none';
+    shipMarker.querySelector('.boat').classList.remove('sunk');
+    track.classList.add('locked');
+    state.locked = true;
+
+    state.current = pickFraction();
+    buildTicks(ticksForRound(state.round));
+    phaseLabel.style.opacity = '1';
+    phaseLabel.textContent = 'Perhatikan pecahannya!';
+    targetValueEl.style.opacity = '1';
+    targetValueEl.innerHTML = fracHTML(state.current.num, state.current.den);
+    feedback.innerHTML = '<div class="fb-main">&nbsp;</div><div class="fb-sub">Perhatikan baik-baik posisinya&hellip;</div>';
+    updateHUD();
+
+    setTimeout(startGuessPhase, SHOW_MS);
+  }
+
+  function startGuessPhase(){
+    phaseLabel.textContent = 'Klik posisi pecahan itu!';
+    track.classList.remove('locked');
+    state.locked = false;
+    feedback.innerHTML = '<div class="fb-main">&nbsp;</div><div class="fb-sub">Klik titik perkiraanmu di garis sungai.</div>';
+  }
+
+  track.addEventListener('click', (e) => {
+    if (state.locked) return;
+    const r = trackRect();
+    let p = ((e.clientX - r.left) / r.width) * 100;
+    p = Math.max(0, Math.min(100, p));
+    const guess = percentToValue(p);
+
+    state.locked = true;
+    track.classList.add('locked');
+    aimMark.style.left = p+'%';
+    aimMark.style.display = '';
+    phaseLabel.textContent = 'Menembak&hellip;';
+    feedback.innerHTML = '<div class="fb-main">&nbsp;</div><div class="fb-sub">Roket bersiap&hellip;</div>';
+
+    setTimeout(() => {
+      revealShip(state.current.value);
+      dropRocket(guess);
+    }, RESOLVE_DELAY_MS);
+  });
+
+  function revealShip(targetValue){
+    const p = valueToPercent(targetValue);
+    shipMarker.style.left = p+'%';
+    shipMarker.style.display = '';
+  }
+
+  function dropRocket(guess){
+    aimMark.style.display = 'none';
+    const p = valueToPercent(guess);
+    const rocket = document.createElement('div');
+    rocket.className = 'rocket-drop';
+    rocket.style.left = p+'%';
+    rocket.textContent = '\u{1F680}';
+    track.appendChild(rocket);
+    setTimeout(() => {
+      rocket.remove();
+      resolveShot(guess);
+    }, 430);
+  }
+
+  function resolveShot(guess){
+    const target = state.current.value;
+    const error = Math.abs(guess - target);
+    const percentErr = error; // range is always 0-1
+
+    let score = Math.round(100 * (1 - percentErr/0.15));
+    score = Math.max(0, Math.min(100, score));
+
+    const isHit = percentErr <= HIT_TOLERANCE;
+
+    let streakBonus = 0;
+    if (isHit){
+      state.streak += 1;
+      state.bestStreak = Math.max(state.bestStreak, state.streak);
+      streakBonus = Math.min(20, state.streak * 3);
+    } else {
+      state.streak = 0;
+    }
+    const roundScore = score + streakBonus;
+    state.score += roundScore;
+    state.scoresLog.push({round: state.round+1, target, guess, error, score});
+
+    const guessP = valueToPercent(guess);
+
+    if (isHit){
+      const boom = document.createElement('div');
+      boom.className = 'explosion';
+      boom.style.left = guessP+'%';
+      boom.textContent = '\u{1F4A5}';
+      resultsLayer.appendChild(boom);
+      shipMarker.querySelector('.boat').classList.add('sunk');
+
+      const wrap = el('track-wrap');
+      wrap.classList.remove('shake');
+      void wrap.offsetWidth;
+      wrap.classList.add('shake');
+    } else {
+      const splash = document.createElement('div');
+      splash.className = 'splash';
+      splash.style.left = guessP+'%';
+      splash.textContent = '\u{1F30A}';
+      resultsLayer.appendChild(splash);
+    }
+
+    phaseLabel.textContent = 'Jawaban Sebenarnya';
+    targetValueEl.innerHTML = fracHTML(state.current.num, state.current.den);
+
+    let mainMsg, subMsg;
+    if (isHit){
+      mainMsg = '\u{1F4A5} Kena! Kapal meledak!';
+      subMsg = 'Selisih ' + error.toFixed(3) + ' &middot; +' + roundScore + ' poin';
+    } else {
+      mainMsg = '\u{1F30A} Meleset, hanya kena air.';
+      subMsg = 'Selisih ' + error.toFixed(3) + ' dari posisi kapal &middot; +' + roundScore + ' poin';
+    }
+    feedback.innerHTML = '<div class="fb-main">'+mainMsg+'</div><div class="fb-sub">'+subMsg+'</div>';
+    updateHUD();
+
+    state.round += 1;
+    setTimeout(newRound, 1800);
+  }
+
+  function showSummary(){
+    const avg = state.score / ROUNDS_TOTAL;
+    let rank, msg;
+    if (avg >= 95){ rank = 'Kapten Navigator Mahakam'; msg = 'Perkiraanmu setajam kompas! Hampir semua tembakan mengenai sasaran.'; }
+    else if (avg >= 75){ rank = 'Awak Kapal Andal'; msg = 'Perkiraanmu sudah kuat, tinggal asah lagi ketelitian membaca garis bilangan.'; }
+    else if (avg >= 50){ rank = 'Kelasi Berlatih'; msg = 'Sudah paham arah, tapi masih sering meleset. Coba lagi untuk lebih teliti.'; }
+    else { rank = 'Perlu Latihan Lagi'; msg = 'Belum banyak yang kena sasaran. Yuk ulangi dan hafalkan pecahannya lebih cermat.'; }
+
+    rankPill.textContent = rank;
+    summaryTitle.textContent = 'Skor Akhir: ' + state.score;
+    summaryBody.innerHTML = msg + '<br><br>Rata-rata akurasi: <b>' + avg.toFixed(1) + '/100</b><br>Beruntun terpanjang: <b>' + state.bestStreak + '</b>';
+    summaryModal.classList.remove('hidden');
+  }
+
+  reviewBtn.addEventListener('click', () => {
+    let lines = state.scoresLog.map((r,i) => (i+1)+'. target '+ (Math.round(r.target*1000)/1000) +', tebakan '+(Math.round(r.guess*1000)/1000)+', skor '+r.score);
+    summaryBody.innerHTML = '<div style="max-height:260px;overflow-y:auto;text-align:left;font-family:ui-monospace, \'SFMono-Regular\', Menlo, Consolas, \'Liberation Mono\', monospace;font-size:11.5px;line-height:1.7;">' + lines.join('<br>') + '</div>';
+  });
+
+  function resetGame(){
+    state = { round:0, score:0, streak:0, bestStreak:0, scoresLog:[], current:null, locked:true };
+    summaryModal.classList.add('hidden');
+    newRound();
+  }
+
+  startBtn.addEventListener('click', () => {
+    introModal.classList.add('hidden');
+    newRound();
+  });
+  restartBtn.addEventListener('click', resetGame);
+
+  /* ---------- Example animation: divide the line, shade the numerator's parts, reveal the point ---------- */
+  const exampleModal = el('example-modal');
+  const demoTrack = el('demo-track');
+  const demoCaption = el('demo-caption');
+  const closeExampleBtn = el('close-example-btn');
+  const replayExampleBtn = el('replay-example-btn');
+  let demoTimers = [];
+
+  function clearDemoTimers(){
+    demoTimers.forEach(t => clearTimeout(t));
+    demoTimers = [];
+  }
+
+  function runExampleAnimation(num, den){
+    clearDemoTimers();
+    demoTrack.innerHTML = '';
+    demoCaption.innerHTML = 'Pecahan <b>'+num+'/'+den+'</b> artinya garis akan dibagi menjadi <b>'+den+'</b> bagian yang sama besar.';
+
+    for (let i=0;i<den;i++){
+      const seg = document.createElement('div');
+      seg.className = 'demo-segment';
+      seg.style.left = (i/den*100)+'%';
+      seg.style.width = (100/den)+'%';
+      demoTrack.appendChild(seg);
+    }
+    const label0 = document.createElement('div');
+    label0.className = 'demo-tick-label';
+    label0.style.left = '0%';
+    label0.textContent = '0';
+    demoTrack.appendChild(label0);
+    const label1 = document.createElement('div');
+    label1.className = 'demo-tick-label';
+    label1.style.left = '100%';
+    label1.textContent = '1';
+    demoTrack.appendChild(label1);
+
+    const point = document.createElement('div');
+    point.className = 'demo-point';
+    point.textContent = '\u{2693}';
+    point.style.left = (num/den*100)+'%';
+    demoTrack.appendChild(point);
+    const pointLine = document.createElement('div');
+    pointLine.className = 'demo-point-line';
+    pointLine.style.left = (num/den*100)+'%';
+    demoTrack.appendChild(pointLine);
+
+    const segments = demoTrack.querySelectorAll('.demo-segment');
+    const DIVIDE_START = 1100;
+    const DIVIDE_STEP = 800;
+    const COLOR_STEP = 1500;
+
+    // Phase 1: reveal the 8 equal divisions one by one, each flashing a contrasting color
+    for (let i=0;i<den;i++){
+      const t = setTimeout(() => {
+        segments[i].classList.add('appear');
+        demoCaption.innerHTML = 'Membagi garis menjadi '+den+' bagian yang sama besar&hellip; ('+(i+1)+' dari '+den+')';
+      }, DIVIDE_START + i*DIVIDE_STEP);
+      demoTimers.push(t);
+    }
+
+    // Phase 2: shade the numerator's segments one by one
+    const colorStart = DIVIDE_START + den*DIVIDE_STEP + 700;
+    for (let i=0;i<num;i++){
+      const t = setTimeout(() => {
+        segments[i].classList.add('active');
+        demoCaption.innerHTML = 'Arsir bagian ke-'+(i+1)+' dari '+den+'&hellip;';
+      }, colorStart + i*COLOR_STEP);
+      demoTimers.push(t);
+    }
+
+    // Phase 3: reveal the resulting point
+    const revealDelay = colorStart + num*COLOR_STEP + 400;
+    const t2 = setTimeout(() => {
+      point.classList.add('show');
+      pointLine.classList.add('show');
+      const decimal = (num/den).toFixed(3).replace(/0+$/,'').replace(/\.$/,'');
+      demoCaption.innerHTML = 'Jadi, titik <b>'+num+'/'+den+'</b> ada di sini &mdash; kira-kira sama dengan <b>'+decimal+'</b>.';
+    }, revealDelay);
+    demoTimers.push(t2);
+  }
+
+  function openExampleModal(){
+    exampleModal.classList.remove('hidden');
+    runExampleAnimation(3, 8);
+  }
+  function closeExampleModal(){
+    clearDemoTimers();
+    exampleModal.classList.add('hidden');
+  }
+
+  el('example-link-btn').addEventListener('click', openExampleModal);
+  el('example-link-btn-intro').addEventListener('click', openExampleModal);
+  closeExampleBtn.addEventListener('click', closeExampleModal);
+  replayExampleBtn.addEventListener('click', () => runExampleAnimation(3, 8));
+
+})();
+</script>
+</body>
+</html>
